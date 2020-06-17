@@ -49,26 +49,22 @@ sns.countplot(x="Credit_History", hue="Loan_Status", data=df)
 #plt.scatter(df["ApplicantIncome"], df["Loan_Status"]) #no pattern
 
 #Missing values
-df.isnull().sum().sort_values(ascending=False)
+#df=df.dropna()
 #Got a couple of missing values
 
 cat_data=[]
 num_data=[]
 
 for i,c in enumerate(df.dtypes):
-    print(i,c)
     if c == object:
         cat_data.append(df.iloc[:,i])
     else:
         num_data.append(df.iloc[:,i])
 cat_data=pd.DataFrame(cat_data).transpose()
 num_data=pd.DataFrame(num_data).transpose()
-print(num_data)
-print(cat_data)
-
-print(num_data.isnull().sum())
 
 #filling missing numerical values with their median
+
 from sklearn.impute import SimpleImputer
 imputer=SimpleImputer(missing_values=np.nan, strategy="median")
 imputer.fit(num_data)
@@ -76,8 +72,11 @@ num_data=pd.DataFrame(imputer.transform(num_data), columns=num_data.columns)
 print(num_data.isnull().sum())
 
 #Replacing missing values of categorical data by their most frequent occurence
+print(cat_data.isnull().sum())
 cat_data = cat_data.apply(lambda x:x.fillna(x.value_counts().index[0]))
 print(cat_data.isnull().sum())
+
+
 
 #No more missing values
 
@@ -97,11 +96,12 @@ target = target.map(target_values)
 #other columns
 for i in cat_data:
     cat_data[i]=le.fit_transform(cat_data[i])
-print(cat_data)
+
 
 #Preprocessing done: Concatening the lists
 
 df_preprocessed = pd.concat([cat_data, num_data, target], axis=1)
+print(df_preprocessed.isnull().sum())
 
 # Creating Train and Test set
 
@@ -166,8 +166,21 @@ def train_evaluate(models, X_train, X_test, y_train, y_test):
         print(name,':')
         model.fit(X_train, y_train)
         evaluate_model(y_test, model.predict(X_test))
+        y_test_prob = model.predict_proba(X_test)[:,1]
+        auc= metrics.roc_auc_score(y_test, y_test_prob)
+        print(f'\nAUC Score : {auc}')
         print('-'*30)
         
 train_evaluate(models, X_train, X_test, y_train, y_test)
+"""
+ RESULTS: Best model is Logistic Regression, with 
+  pre: 0.826
+  rec: 0.982
+  f1: 0.897
+  loss: 5.607
+  acc: 0.838
+  AUC Score : 0.759899434318039
+"""
+# Feature Selection:
 
 
