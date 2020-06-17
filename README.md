@@ -15,7 +15,7 @@ I've tested out 3 different algorithms so far : K_neighboor Classifier, Logistic
 - Add new models (RandomForest, SVM, ..)
 - Create pipelines that i can reuse for latter project
 - Maybe do some benchmark and add some logs
-- Add prediction probabilities
+- Add prediction probabilities (DONE)
 - Have fun
 
 
