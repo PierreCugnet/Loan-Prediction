@@ -10,6 +10,7 @@ I've tested out 3 different algorithms so far : K_neighboor Classifier, Logistic
 
 - More data pre-processing (ie: Discuss missing value, for now num datas were changed by their median but i need to check if just removing the datas wouldn't provide better results)
 - More and more data pre-processing (ie : discussing encoding cat datas)
+- More and more and more data pre-processing (ie: Feature selection)
 - Hyper parameter tuning (Implement Grid Searching)
 - Add new models (RandomForest, SVM, ..)
 - Create pipelines that i can reuse for latter project
