@@ -12,7 +12,5 @@ I've tested out 3 different algorithms so far : K_neighboor Classifier, Logistic
 - Add new models
 - Create pipeline that i can reuse for latter project
 
-# Useful things:
 
-Data pre-processing for binary classification : https://www.youtube.com/watch?v=V0u6bxQOUJ8
 
