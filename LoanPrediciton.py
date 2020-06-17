@@ -31,7 +31,7 @@ df.dtypes
 df['Credit_History'] = df['Credit_History'].astype('O') 
 
 
-
+"""
 sns.set()
 sns.countplot(df["Loan_Status"])
 print('The percentage of Y class : %.2f' % (df['Loan_Status'].value_counts()[0] / len(df)))
@@ -45,8 +45,8 @@ sns.countplot(x="Education", hue="Loan_Status", data=df)
 sns.countplot(x="Self_Employed", hue="Loan_Status", data=df)
 sns.countplot(x="Property_Area", hue="Loan_Status", data=df)
 sns.countplot(x="Credit_History", hue="Loan_Status", data=df)
-
-plt.scatter(df["ApplicantIncome"], df["Loan_Status"]) #no pattern
+"""
+#plt.scatter(df["ApplicantIncome"], df["Loan_Status"]) #no pattern
 
 #Missing values
 df.isnull().sum().sort_values(ascending=False)
@@ -125,7 +125,7 @@ y_pred_class=logreg.predict(X_test)
 
 from sklearn import metrics
 acc=metrics.accuracy_score(y_test, y_pred_class)
-recall_score = metrics.recall_score(y_test, y_pred_class) #Sensitivity : When the value is 1 how often is he correct?
+recall_score = metrics.recall_score(y_test, y_pred_class)
 precision = metrics.precision_score(y_test, y_pred_class)
 print(f'Accuracy = {acc}')
 print(f'Recall Score = {recall_score}')
@@ -133,8 +133,41 @@ print(f'Precision = {precision}')
 
 
 cm = metrics.confusion_matrix(y_test, y_pred_class)
-tp = cm[1,1]
-tn = cm[0,0]
-fp = cm[0,1]
-fn = cm[1,0]
+
+
+#As we'll be testing different algorithm i'm going to create a function that evaluate models tested
+from sklearn.metrics import precision_score, recall_score, f1_score, log_loss, accuracy_score
+
+def evaluate_model(y_true, y_pred, retu=False):
+    pre = precision_score(y_true, y_pred)
+    rec = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    loss = log_loss(y_true, y_pred)
+    acc = accuracy_score(y_true, y_pred)
+    
+    if retu:
+        return pre, rec, f1, loss, acc
+    else:
+        print('  pre: %.3f\n  rec: %.3f\n  f1: %.3f\n  loss: %.3f\n  acc: %.3f' % (pre, rec, f1, loss, acc))
+
+#Add models here to test them with our data set
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+
+models = {
+    'LogisticRegression': LogisticRegression(random_state=42),
+    'KNeighborsClassifier': KNeighborsClassifier(),
+    'DecisionTreeClassifier': DecisionTreeClassifier(max_depth=1, random_state=42)
+}
+#Evaluate performance on the train set
+def train_evaluate(models, X_train, X_test, y_train, y_test):
+    for name, model in models.items():
+        print(name,':')
+        model.fit(X_train, y_train)
+        evaluate_model(y_test, model.predict(X_test))
+        print('-'*30)
+        
+train_evaluate(models, X_train, X_test, y_train, y_test)
+
 
