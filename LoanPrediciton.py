@@ -18,9 +18,10 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 
+#Import csv file
 df=pd.read_csv("loan_dataset.csv")
 
-#data exploration
+# quick data exploration
 df=df.drop('Loan_ID',axis=1)
 df.describe()
 df.head()
@@ -49,11 +50,11 @@ sns.countplot(x="Credit_History", hue="Loan_Status", data=df)
 #plt.scatter(df["ApplicantIncome"], df["Loan_Status"]) #no pattern
 
 #Missing values
-#df=df.dropna()
+df=df.dropna()
 #Got a couple of missing values
 
-cat_data=[]
-num_data=[]
+cat_data = []
+num_data = []
 
 for i,c in enumerate(df.dtypes):
     if c == object:
@@ -63,10 +64,12 @@ for i,c in enumerate(df.dtypes):
 cat_data=pd.DataFrame(cat_data).transpose()
 num_data=pd.DataFrame(num_data).transpose()
 
+
 #filling missing numerical values with their median
 
 from sklearn.impute import SimpleImputer
 imputer=SimpleImputer(missing_values=np.nan, strategy="median")
+
 imputer.fit(num_data)
 num_data=pd.DataFrame(imputer.transform(num_data), columns=num_data.columns)
 
@@ -85,6 +88,7 @@ cat_data = cat_data.apply(lambda x:x.fillna(x.value_counts().index[0]))
 
 from sklearn.preprocessing import LabelEncoder
 le=LabelEncoder()
+from sklearn.preprocessing import OneHotEncoder
 
 
 #target column preprocessing
@@ -101,12 +105,13 @@ for i in cat_data:
 #Preprocessing done: Concatening the lists
 
 df_preprocessed = pd.concat([cat_data, num_data, target], axis=1)
-print(df_preprocessed.isnull().sum())
+
 
 # Creating Train and Test set
 
 X=df_preprocessed.iloc[:,:-1]
 y=df_preprocessed[["Loan_Status"]]
+
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
 
@@ -117,9 +122,13 @@ print(f'Null Accuracy : {null_acc}')
 
 #Part 1: Logistic regression
 
-from sklearn.linear_model import LogisticRegression
-logreg=LogisticRegression()
-logreg.fit(X_train, y_train)
+
+
+
+
+
+
+#logreg.fit(X_train, y_train)
 
 y_pred_class=logreg.predict(X_test)
 
@@ -137,6 +146,8 @@ cm = metrics.confusion_matrix(y_test, y_pred_class)
 
 #As we'll be testing different algorithm i'm going to create a function that evaluate models tested
 from sklearn.metrics import precision_score, recall_score, f1_score, log_loss, accuracy_score
+from sklearn.model_selection import cross_val_score
+
 
 def evaluate_model(y_true, y_pred, retu=False):
     pre = precision_score(y_true, y_pred)
@@ -155,12 +166,14 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
 models = {
     'LogisticRegression': LogisticRegression(random_state=42),
     'KNeighborsClassifier': KNeighborsClassifier(),
     'DecisionTreeClassifier': DecisionTreeClassifier(max_depth=1, random_state=42),
-    'SVC' : SVC(random_state = 42, probability = True)
+    'SVC' : SVC(random_state = 42, probability = True),
+    'RandomForest' : RandomForestClassifier(n_estimators = 50)
 }
 #Evaluate performance on the train set
 def train_evaluate(models, X_train, X_test, y_train, y_test):
@@ -182,7 +195,99 @@ train_evaluate(models, X_train, X_test, y_train, y_test)
   loss: 5.607
   acc: 0.838
   AUC Score : 0.759899434318039
+  
+  UPDATE: RandomForestClassifier giving best results (as expected) though hyperaparameters were chosen experimentally.
+  Need to GridSearch that.
+  
 """
+
+
+
+
+
+## Grid Searching RandomForestClassifier hyperparameters, validating with cross validation and pipelines!
+# Run this piece of code to process with a fresh dataset
+import pandas as pd 
+import seaborn as sns
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+import warnings
+warnings.filterwarnings('ignore')
+
+
+df=pd.read_csv(("loan_dataset.csv"))
+df=df.dropna()
+df=df.drop('Loan_ID',axis=1)
+
+cat_columns = []
+num_columns = []
+for i,c in enumerate(df.dtypes):
+    if c == object:
+        cat_columns.append(df.columns[i])
+    else :
+        num_columns.append(df.columns[i])
+       
+del(cat_columns[-1])
+
+
+X=df.iloc[:,:-1]
+y=df[["Loan_Status"]]
+target_values = {'Y': 1 , 'N' : 0}
+y = df[['Loan_Status']]
+y['Loan_Status'] = y['Loan_Status'].map(target_values)
+
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import classification_report
+from sklearn.compose import make_column_transformer
+column_transf = make_column_transformer(
+        (OneHotEncoder(), cat_columns),
+        (SimpleImputer(), num_columns)
+        )
+
+RandomForest=RandomForestClassifier()
+pipe = Pipeline([('pre-processing', column_transf), ('model', RandomForest)])
+param_grid = {
+        'model__n_estimators' : [5*(i+1) for i in range(20)],
+        'model__max_depth' : [i+1 for i in range(15)]}
+search = GridSearchCV(pipe, param_grid, cv=3, scoring='accuracy')
+search.fit(X_train,y_train)
+print("Best parameters found on train set:")
+print()
+print(search.best_params_)
+
+print("Grid scores on development set:")
+print()
+means = search.cv_results_['mean_test_score']
+stds = search.cv_results_['std_test_score']
+for mean, std, params in zip(means, stds, search.cv_results_['params']):
+    print("%0.3f (+/-%0.03f) for %r"
+          % (mean, std * 2, params))
+print()
+plt.plot(means)
+plt.xlabel('n_estimators for RandomForestClassifier')
+plt.ylabel('Accuracy')
+
+
+print("Detailed classification report:")
+print()
+print("The model is trained on the full development set.")
+print("The scores are computed on the full evaluation set.")
+print()
+y_true, y_pred = y_test, search.predict(X_test)
+print(classification_report(y_true, y_pred))
+print()
+
+
 # Feature Selection
 
 data_corr = pd.concat([X_train, y_train], axis=1)
@@ -191,6 +296,4 @@ plt.figure(figsize=(10,7))
 sns.heatmap(corr, annot=True);
 # Correlation matrix : Strong corellation between Loan_Amount and Applicant Income, and between Credit_History and Loan_Status (=Our best Feature)
 # We also have a medium correlation between Married and Dependents 
-
-
 
