@@ -10,11 +10,11 @@ I've tested out 3 different algorithms so far : K_neighboor Classifier, Logistic
 
 - More data pre-processing (ie: Discuss missing value, for now num datas were changed by their median but i need to check if just removing the datas wouldn't provide better results  DONE: drop NA won't provide better results)
 - More and more data pre-processing (ie : discussing encoding cat datas)
-- More and more and more data pre-processing (ie: Feature selection)
-- Hyper parameter tuning (Implement Grid Searching)
-- Add new models (RandomForest, SVM, ..)
-- Create pipelines that i can reuse for latter project
-- Maybe do some benchmark and add some logs
+- More and more and more data pre-processing (ie: Feature selection) -- Correlation Matrix plotted
+- Hyper parameter tuning
+- Add new models (RandomForest, SVC, ..) -- SVC ADDED
+- Create pipelines for final process validation
+- Maybe do some benchmark
 - Add prediction probabilities (DONE)
 - Have fun
 
