@@ -69,12 +69,12 @@ from sklearn.impute import SimpleImputer
 imputer=SimpleImputer(missing_values=np.nan, strategy="median")
 imputer.fit(num_data)
 num_data=pd.DataFrame(imputer.transform(num_data), columns=num_data.columns)
-print(num_data.isnull().sum())
+
 
 #Replacing missing values of categorical data by their most frequent occurence
-print(cat_data.isnull().sum())
+
 cat_data = cat_data.apply(lambda x:x.fillna(x.value_counts().index[0]))
-print(cat_data.isnull().sum())
+
 
 
 
@@ -112,8 +112,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
 
 
 #Calculating Null Accuracy for comparison and better interpretation
-null_acc = 1 - y_test.mean()
-print(null_acc)
+null_acc = y_test.mean()
+print(f'Null Accuracy : {null_acc}')
 
 #Part 1: Logistic regression
 
@@ -154,11 +154,13 @@ def evaluate_model(y_true, y_pred, retu=False):
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
 
 models = {
     'LogisticRegression': LogisticRegression(random_state=42),
     'KNeighborsClassifier': KNeighborsClassifier(),
-    'DecisionTreeClassifier': DecisionTreeClassifier(max_depth=1, random_state=42)
+    'DecisionTreeClassifier': DecisionTreeClassifier(max_depth=1, random_state=42),
+    'SVC' : SVC(random_state = 42, probability = True)
 }
 #Evaluate performance on the train set
 def train_evaluate(models, X_train, X_test, y_train, y_test):
@@ -181,6 +183,14 @@ train_evaluate(models, X_train, X_test, y_train, y_test)
   acc: 0.838
   AUC Score : 0.759899434318039
 """
-# Feature Selection:
+# Feature Selection
+
+data_corr = pd.concat([X_train, y_train], axis=1)
+corr = data_corr.corr()
+plt.figure(figsize=(10,7))
+sns.heatmap(corr, annot=True);
+# Correlation matrix : Strong corellation between Loan_Amount and Applicant Income, and between Credit_History and Loan_Status (=Our best Feature)
+# We also have a medium correlation between Married and Dependents 
+
 
 
