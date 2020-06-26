@@ -65,15 +65,21 @@ df['Loan_Status'] = df['Loan_Status'].apply(lambda x : x.replace('Y', '1').repla
 #Missing values
 df.isna().mean()
 
+
+X=df.iloc[:,:-1]
+y=df[["Loan_Status"]]
+
 #Got a couple of missing values not that much though (8% for Credit_History is the max): I'm going to consider that missing values are relevant informations
 
-#Splitting categorical and numerical features into 2 different datasets
-cat_data = pd.DataFrame()
-num_data = pd.DataFrame()    
-cat_data=df.select_dtypes(include = 'object')
-num_data=df.select_dtypes(include = 'number')
-target=num_data.iloc[:,-1]
-num_data.drop("Loan_Status", axis=1, inplace=True)
+# Creating Train and Test set
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+#Splitting categorical and numerical features into 2 different datasets   
+X_train_cat=X_train.select_dtypes(include = 'object')
+X_train_num=X_train.select_dtypes(include = 'number')
+X_test_cat=X_test.select_dtypes(include = 'object')
+X_test_num=X_test.select_dtypes(include = 'number')
+
 
 
 #filling missing numerical values with their median and scaling them
@@ -83,35 +89,30 @@ imputer=SimpleImputer(missing_values=np.nan, strategy="median")
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 
-imputer.fit(num_data)
-num_data = pd.DataFrame(imputer.transform(num_data), columns=num_data.columns)
+#Fit only on the train set to avoid data leakage
+imputer.fit(X_train_num)
+X_train_num = pd.DataFrame(imputer.transform(X_train_num), index=X_train_num.index, columns=X_train_num.columns)
+X_test_num = pd.DataFrame(imputer.transform(X_test_num), index=X_test_num.index, columns=X_test_num.columns)
 
-scaler.fit(num_data)
-num_data = pd.DataFrame(scaler.transform(num_data), columns=num_data.columns)
-
+scaler.fit(X_train_num)
+X_train_num = pd.DataFrame(scaler.transform(X_train_num), index=X_train_num.index, columns=X_train_num.columns)
+X_test_num = pd.DataFrame(scaler.transform(X_test_num), index=X_test_num.index, columns=X_test_num.columns)
 
 #Encoding categorical data with dummies (to keep nan as relevant features)
-cat_data=pd.get_dummies(cat_data, drop_first=True)
+X_train_cat=pd.get_dummies(X_train_cat, drop_first=True, dummy_na=True)
+X_test_cat=pd.get_dummies(X_test_cat, drop_first=True, dummy_na=True)
 
 
 #Preprocessing done: Concatening the lists
 
-df_preprocessed = pd.concat([cat_data, num_data, target], axis=1)
-corr = df_preprocessed.corr()
+X_train_prep = pd.concat([X_train_cat, X_train_num], axis=1)
+X_test_prep = pd.concat([X_test_cat, X_test_num], axis=1)
+corr = X_train_prep.corr()
 plt.figure(figsize=(10,7))
 sns.heatmap(corr, annot=True)
 # Correlation matrix : Strong corellation between Loan_Amount and Applicant Income, and between Credit_History and Loan_Status (=Our best Feature)
 # This dataset is very imbalanced and the only relevant feature is Credit_History, we could actually drop all the features except that one but that's not the purpose of this project
 
-
-
-# Creating Train and Test set
-
-X=df_preprocessed.iloc[:,:-1]
-y=df_preprocessed[["Loan_Status"]]
-
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
 
 
 #Calculating Null Accuracy for comparison and better interpretation
@@ -127,21 +128,23 @@ print(f'Null Accuracy : {null_acc}')
 
 from sklearn.linear_model import LogisticRegression
 logreg=LogisticRegression(random_state=42)
-logreg.fit(X_train, y_train)
+logreg.fit(X_train_prep, y_train)
 
-y_pred_class=logreg.predict(X_test)
+y_test_pred=logreg.predict(X_test_prep)
 
 from sklearn import metrics
-acc=metrics.accuracy_score(y_test, y_pred_class)
-recall_score = metrics.recall_score(y_test, y_pred_class)
-precision = metrics.precision_score(y_test, y_pred_class)
+acc=metrics.accuracy_score(y_test, y_test_pred)
+recall_score = metrics.recall_score(y_test, y_test_pred)
+precision = metrics.precision_score(y_test, y_test_pred)
 print(f'Accuracy = {acc}')
 print(f'Recall Score = {recall_score}')
 print(f'Precision = {precision}')
 
 
-cm = metrics.confusion_matrix(y_test, y_pred_class)
+cm = metrics.confusion_matrix(y_test, y_test_pred)
 print(cm)
+
+#Pretty good score!
 
 #As we'll be testing different algorithm i'm going to create a function that evaluate models tested
 from sklearn.metrics import precision_score, recall_score, f1_score, log_loss, accuracy_score
@@ -155,10 +158,13 @@ def evaluate_model(y_true, y_pred, retu=False):
     loss = log_loss(y_true, y_pred)
     acc = accuracy_score(y_true, y_pred)
     
+    
     if retu:
         return pre, rec, f1, loss, acc
     else:
         print('pre: %.3f\n  rec: %.3f\n  f1: %.3f\n  loss: %.3f\n  acc: %.3f' % (pre, rec, f1, loss, acc))
+        
+evaluate_model(y_test,y_test_pred)
 
 #Add models here to test them with our data set
 from sklearn.linear_model import LogisticRegression
@@ -183,21 +189,62 @@ def train_evaluate(models, X_train, X_test, y_train, y_test):
         y_test_prob = model.predict_proba(X_test)[:,1]
         auc= metrics.roc_auc_score(y_test, y_test_prob)
         print(f'\nAUC Score : {auc}')
+        cm = metrics.confusion_matrix(y_test, y_test_pred)
+        print('Confusion Matrix :')
+        print(cm)
         print('-'*30)
+
         
-train_evaluate(models, X_train, X_test, y_train, y_test)
+train_evaluate(models, X_train_prep, X_test_prep, y_train, y_test)
 """
- RESULTS: Best model is Logistic Regression, with 
-  pre: 0.826
+LogisticRegression :
+pre: 0.826
   rec: 0.982
   f1: 0.897
   loss: 5.607
   acc: 0.838
-  AUC Score : 0.759899434318039
-  
-  UPDATE: RandomForestClassifier giving best results (as expected) though hyperaparameters were chosen experimentally.
-  Need to GridSearch that.
-  
+
+AUC Score : 0.804944479363084
+------------------------------
+KNeighborsClassifier :
+pre: 0.806
+  rec: 0.901
+  f1: 0.851
+  loss: 7.850
+  acc: 0.773
+
+AUC Score : 0.733919966478106
+------------------------------
+DecisionTreeClassifier :
+pre: 0.826
+  rec: 0.901
+  f1: 0.862
+  loss: 7.177
+  acc: 0.792
+
+AUC Score : 0.7062644039388226
+------------------------------
+SVC :
+pre: 0.820
+  rec: 0.982
+  f1: 0.893
+  loss: 5.831
+  acc: 0.831
+
+AUC Score : 0.7915357217682799
+------------------------------
+RandomForest :
+pre: 0.831
+  rec: 0.928
+  f1: 0.877
+  loss: 6.504
+  acc: 0.812
+
+AUC Score : 0.78797402053216
+------------------------------
+
+Logistic Regression wins this time, but more pre-processing need to be done to really determine which algorithm wins.
+But today topic is pipeline implementation with GridSearchCV to have a clean, easy to understand code along with a strong validation not only on the model used but on the whole process!
 """
 
 
@@ -205,7 +252,8 @@ train_evaluate(models, X_train, X_test, y_train, y_test)
 
 
 ## Grid Searching RandomForestClassifier hyperparameters, validating with cross validation and pipelines!
-# Run this piece of code to process with a fresh dataset
+# Run this piece of code to process with a fresh dataset :
+#This script does the same pre-processing as above but in a more optimal way"
 import pandas as pd 
 import seaborn as sns
 import numpy as np
