@@ -4,7 +4,8 @@ Created on Tue Jun 16 09:48:41 2020
 
 @author: Pierre Cugnet
 
-Project Description: Personnal project
+Project Description: Personnal project - The aim of this project if to test out different basic algorithm, and to implemente pipeline and hyperparameters tuning for process validation with the best classifier.
+Basic pre-processing is done, though this is not the objective.
 """
 
 import pandas as pd
@@ -22,6 +23,7 @@ warnings.filterwarnings('ignore')
 df=pd.read_csv("loan_dataset.csv")
 
 # quick data exploration
+
 df=df.drop('Loan_ID',axis=1)
 df.describe()
 df.head()
@@ -46,65 +48,61 @@ sns.countplot(x="Education", hue="Loan_Status", data=df)
 sns.countplot(x="Self_Employed", hue="Loan_Status", data=df)
 sns.countplot(x="Property_Area", hue="Loan_Status", data=df)
 sns.countplot(x="Credit_History", hue="Loan_Status", data=df)
+sns.countplot(x="Self_Employed", hue="Loan_Status", data=df)
 """
 #plt.scatter(df["ApplicantIncome"], df["Loan_Status"]) #no pattern
 
+# Feature Exploration
+
+
+
+
+
+## Target value pre-procssing : Transforming Y and N by 1 and 0
+df['Loan_Status'] = df['Loan_Status'].apply(lambda x : x.replace('Y', '1').replace('N', '0')).astype(int)
+
+
 #Missing values
-df=df.dropna()
-#Got a couple of missing values
+df.isna().mean()
 
-cat_data = []
-num_data = []
+#Got a couple of missing values not that much though (8% for Credit_History is the max): I'm going to consider that missing values are relevant informations
 
-for i,c in enumerate(df.dtypes):
-    if c == object:
-        cat_data.append(df.iloc[:,i])
-    else:
-        num_data.append(df.iloc[:,i])
-cat_data=pd.DataFrame(cat_data).transpose()
-num_data=pd.DataFrame(num_data).transpose()
+#Splitting categorical and numerical features into 2 different datasets
+cat_data = pd.DataFrame()
+num_data = pd.DataFrame()    
+cat_data=df.select_dtypes(include = 'object')
+num_data=df.select_dtypes(include = 'number')
+target=num_data.iloc[:,-1]
+num_data.drop("Loan_Status", axis=1, inplace=True)
 
 
-#filling missing numerical values with their median
+#filling missing numerical values with their median and scaling them
 
 from sklearn.impute import SimpleImputer
 imputer=SimpleImputer(missing_values=np.nan, strategy="median")
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
 
 imputer.fit(num_data)
-num_data=pd.DataFrame(imputer.transform(num_data), columns=num_data.columns)
+num_data = pd.DataFrame(imputer.transform(num_data), columns=num_data.columns)
+
+scaler.fit(num_data)
+num_data = pd.DataFrame(scaler.transform(num_data), columns=num_data.columns)
 
 
-#Replacing missing values of categorical data by their most frequent occurence
-
-cat_data = cat_data.apply(lambda x:x.fillna(x.value_counts().index[0]))
-
-
-
-
-#No more missing values
-
-
-#Encoding categorical data with LabelEncoder
-
-from sklearn.preprocessing import LabelEncoder
-le=LabelEncoder()
-from sklearn.preprocessing import OneHotEncoder
-
-
-#target column preprocessing
-target_values = {'Y': 1 , 'N' : 0}
-target = cat_data['Loan_Status']
-cat_data.drop('Loan_Status', axis=1, inplace=True)
-target = target.map(target_values)
-
-#other columns
-for i in cat_data:
-    cat_data[i]=le.fit_transform(cat_data[i])
+#Encoding categorical data with dummies (to keep nan as relevant features)
+cat_data=pd.get_dummies(cat_data, drop_first=True)
 
 
 #Preprocessing done: Concatening the lists
 
 df_preprocessed = pd.concat([cat_data, num_data, target], axis=1)
+corr = df_preprocessed.corr()
+plt.figure(figsize=(10,7))
+sns.heatmap(corr, annot=True)
+# Correlation matrix : Strong corellation between Loan_Amount and Applicant Income, and between Credit_History and Loan_Status (=Our best Feature)
+# This dataset is very imbalanced and the only relevant feature is Credit_History, we could actually drop all the features except that one but that's not the purpose of this project
+
 
 
 # Creating Train and Test set
@@ -120,15 +118,16 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
 null_acc = y_test.mean()
 print(f'Null Accuracy : {null_acc}')
 
-#Part 1: Logistic regression
+#Part 1: Logistic regression example
 
 
 
 
 
 
-
-#logreg.fit(X_train, y_train)
+from sklearn.linear_model import LogisticRegression
+logreg=LogisticRegression(random_state=42)
+logreg.fit(X_train, y_train)
 
 y_pred_class=logreg.predict(X_test)
 
@@ -142,7 +141,7 @@ print(f'Precision = {precision}')
 
 
 cm = metrics.confusion_matrix(y_test, y_pred_class)
-
+print(cm)
 
 #As we'll be testing different algorithm i'm going to create a function that evaluate models tested
 from sklearn.metrics import precision_score, recall_score, f1_score, log_loss, accuracy_score
@@ -159,7 +158,7 @@ def evaluate_model(y_true, y_pred, retu=False):
     if retu:
         return pre, rec, f1, loss, acc
     else:
-        print('  pre: %.3f\n  rec: %.3f\n  f1: %.3f\n  loss: %.3f\n  acc: %.3f' % (pre, rec, f1, loss, acc))
+        print('pre: %.3f\n  rec: %.3f\n  f1: %.3f\n  loss: %.3f\n  acc: %.3f' % (pre, rec, f1, loss, acc))
 
 #Add models here to test them with our data set
 from sklearn.linear_model import LogisticRegression
@@ -218,7 +217,6 @@ warnings.filterwarnings('ignore')
 
 
 df=pd.read_csv(("loan_dataset.csv"))
-df=df.dropna()
 df=df.drop('Loan_ID',axis=1)
 
 cat_columns = []
@@ -229,14 +227,12 @@ for i,c in enumerate(df.dtypes):
     else :
         num_columns.append(df.columns[i])
        
-del(cat_columns[-1])
+del(cat_columns[-1]) #Del target column
 
 
 X=df.iloc[:,:-1]
-y=df[["Loan_Status"]]
-target_values = {'Y': 1 , 'N' : 0}
-y = df[['Loan_Status']]
-y['Loan_Status'] = y['Loan_Status'].map(target_values)
+y = df['Loan_Status']
+y= y.apply(lambda x : x.replace('Y', '1').replace('N', '0')).astype(int) #Replacing Y and N by 1 and 0
 
 
 from sklearn.model_selection import train_test_split
@@ -248,18 +244,32 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import classification_report
-from sklearn.compose import make_column_transformer
-column_transf = make_column_transformer(
-        (OneHotEncoder(), cat_columns),
-        (SimpleImputer(), num_columns)
-        )
+from sklearn.preprocessing import StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.metrics import confusion_matrix
+
+# Using a Cross validation process, we need to be careful of data leakage ! pipeline help us doing that!
+numeric_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler())])
+
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transformer, num_columns),
+        ('cat', categorical_transformer, cat_columns)])
 
 RandomForest=RandomForestClassifier()
-pipe = Pipeline([('pre-processing', column_transf), ('model', RandomForest)])
+
+pipe = Pipeline([('pre-processing', preprocessor), ('model', RandomForest)])
 param_grid = {
-        'model__n_estimators' : [5*(i+1) for i in range(20)],
-        'model__max_depth' : [i+1 for i in range(15)]}
-search = GridSearchCV(pipe, param_grid, cv=3, scoring='accuracy')
+        'model__n_estimators' : [10,25,50,100],
+        'model__max_depth' : [i+1 for i in range(15)],
+        }
+search = GridSearchCV(pipe, param_grid, cv=3, scoring='accuracy', refit=True)
 search.fit(X_train,y_train)
 print("Best parameters found on train set:")
 print()
@@ -273,9 +283,6 @@ for mean, std, params in zip(means, stds, search.cv_results_['params']):
     print("%0.3f (+/-%0.03f) for %r"
           % (mean, std * 2, params))
 print()
-plt.plot(means)
-plt.xlabel('n_estimators for RandomForestClassifier')
-plt.ylabel('Accuracy')
 
 
 print("Detailed classification report:")
@@ -285,15 +292,8 @@ print("The scores are computed on the full evaluation set.")
 print()
 y_true, y_pred = y_test, search.predict(X_test)
 print(classification_report(y_true, y_pred))
+print(confusion_matrix(y_true,y_pred))
 print()
 
 
-# Feature Selection
-
-data_corr = pd.concat([X_train, y_train], axis=1)
-corr = data_corr.corr()
-plt.figure(figsize=(10,7))
-sns.heatmap(corr, annot=True);
-# Correlation matrix : Strong corellation between Loan_Amount and Applicant Income, and between Credit_History and Loan_Status (=Our best Feature)
-# We also have a medium correlation between Married and Dependents 
 
