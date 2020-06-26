@@ -27,7 +27,7 @@ Hope you enjoy!
 
 - More data pre-processing (ie: Discuss missing value, for now num datas were changed by their median but i need to check if just removing the datas wouldn't provide better results  DONE: drop NA won't provide better results, still need to explore NA handling)
 - More and more data pre-processing (ie : discussing encoding cat datas DONE : Tried a few thing, choose experimentally imputation + encoding.)
-- More and more and more data pre-processing (ie: Feature selection) -- Correlation Matrix plotted 
+- More and more and more data pre-processing (ie: Feature selection) -- Correlation Matrix plotted, the dataset is not really good, we could do some up-scaling/down scaling process and feature engineering but i'll just do some basic pre-preprocessing process (imputation + scaling). I'll keep those stuff for some more interesting datasets!
 - Hyper parameter tuning (DONE for RandomForest : Pipeline for process validation and hyperparameters tuning ! Still need to implement preprocessing gridsearch tho!)
 - Add new models (RandomForest, SVC, ..) -- DONE SVC ADDED, RandomForest added
 - Create pipelines for final process validation (DONE)
