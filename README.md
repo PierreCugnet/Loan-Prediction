@@ -4,8 +4,8 @@
 
 This is a personnal project, the aim is to perform a binary classification on the Loan_Status feature of the Loan_prediction dataset (Can be download from this git or from Kaggle at the following url : https://www.kaggle.com/altruistdelhite04/loan-prediction-problem-dataset)
 
-This project is a part of a long term project which is to make this git a solid data science algorithm data base, implementation and explanation.
-In this repo, you'll find some basic algorithm implementation and basic preprocessing techniques which you can re-use for your own purpose !
+This project is a part of a long term project which is to make this git a solid ML algorithm implementation and explanationdata base.
+In this repo, you'll find some basic algorithm implementation and basic preprocessing techniques for binary classification which you can re-use for your own purpose !
 
 
 I've tested out 5 different algorithms so far : K_neighboor Classifier, LogisticRegression, DecisionTreeClassifier, RandomForest, SVM with Random giving the best result.
